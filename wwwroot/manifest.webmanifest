@@ -1,0 +1,14 @@
+{
+  "name": "StreamCell",
+  "short_name": "StreamCell",
+  "description": "Seu celular como um painel de controle para o PC.",
+  "lang": "pt-BR",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#101115",
+  "theme_color": "#101115",
+  "icons": [
+    {"src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"}
+  ]
+}

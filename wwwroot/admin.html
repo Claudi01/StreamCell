@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#101115">
+  <title>StreamCell · Editor no PC</title>
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+  <script defer src="/shared.js"></script>
+  <script defer src="/admin.js"></script>
+</head>
+<body class="admin">
+  <header class="admin-header">
+    <a class="brand" href="/admin"><span class="brand-mark" data-icon="grid"></span><span>Stream<span class="brand-light">Cell</span></span><span class="editor-badge">EDITOR NO PC</span></a>
+    <div class="header-actions"><span id="saveStatus" class="save-status">Carregando…</span><button id="connectPhone" class="button secondary"><span data-icon="phone"></span><span>Conectar celular</span></button><button id="openSettings" class="icon-button outlined" aria-label="Configurações" title="Configurações"><span data-icon="settings"></span></button><button id="saveConfig" class="button primary"><span data-icon="save"></span>Salvar alterações</button></div>
+  </header>
+  <div id="adminError" class="admin-access-error" hidden><span data-icon="monitor"></span><h1>Abra o editor pelo StreamCell</h1><p id="adminErrorText">Abra no navegador o endereço “Editor do PC” exibido na janela do StreamCell para configurar seu painel.</p></div>
+  <main id="editorWorkspace" class="editor-workspace" hidden>
+    <aside class="sidebar">
+      <div class="sidebar-heading"><span class="eyebrow">SUAS PÁGINAS</span><button id="addPage" class="icon-button small" aria-label="Adicionar página" title="Adicionar página"><span data-icon="plus"></span></button></div>
+      <nav id="pageList" class="page-list" aria-label="Páginas"></nav>
+      <div class="sidebar-divider"></div>
+      <span class="eyebrow">O QUE VOCÊ PODE CONTROLAR</span>
+      <div class="capability-list"><div><span data-icon="broadcast"></span><div><strong>Live e gravação</strong><span>Cenas, áudio e OBS</span></div></div><div><span data-icon="music"></span><div><strong>Soundpad</strong><span>Sons e efeitos na hora certa</span></div></div><div><span data-icon="app"></span><div><strong>Seu computador</strong><span>Apps, sites e atalhos</span></div></div><div><span data-icon="sound"></span><div><strong>Mídia e volume</strong><span>O som no seu controle</span></div></div></div>
+      <div class="sidebar-tip"><span data-icon="phone"></span><p>Você configura aqui.<br>O celular só executa.</p></div>
+      <span id="versionLabel" class="version-label">STREAMCELL</span>
+    </aside>
+    <section class="canvas-panel">
+      <div class="canvas-title"><div><span class="eyebrow">MONTE O SEU DECK</span><h1 id="currentPageTitle">Principal</h1></div><div class="canvas-page-actions"><button id="renamePage" class="text-button">Renomear</button><button id="deletePage" class="icon-button small" aria-label="Excluir página" title="Excluir página"><span data-icon="trash"></span></button></div></div>
+      <div class="canvas-device"><div class="device-topline"><span class="device-dot"></span><span>PRÉVIA DO CELULAR</span><span id="keyCount">0 / 15 teclas</span></div><div class="deck-frame editor-frame"><div id="editorGrid" class="deck-grid editor-grid"></div></div><div class="device-bottomline"><span class="brand-word">streamcell</span><span id="canvasPageNumber">01 / 01</span></div></div>
+      <div class="canvas-instructions"><span data-icon="grip"></span><span>Selecione uma tecla para editar. Arraste para reorganizar.</span></div>
+      <div class="sync-note"><span class="sync-dot"></span><span>Salvou no PC? O celular recebe as mudanças automaticamente.</span></div>
+    </section>
+    <aside class="inspector">
+      <div class="inspector-heading"><span class="eyebrow">PERSONALIZAR TECLA</span><span id="selectedSlot" class="slot-tag">01</span></div>
+      <div id="inspectorEmpty" class="inspector-empty"><div class="empty-key-preview"><span data-icon="plus"></span></div><h2>Uma tecla, uma ação.</h2><p>Escolha o que esta tecla vai fazer.<br>Ela aparecerá no seu celular.</p><button id="createButton" class="button primary full"><span data-icon="plus"></span>Configurar tecla</button></div>
+      <form id="buttonForm" hidden>
+        <label class="field">Ação<select id="buttonType"><optgroup label="Computador"><option value="app">Abrir aplicativo</option><option value="url">Abrir site</option><option value="hotkey">Atalho de teclado</option><option value="media">Mídia e volume</option></optgroup><optgroup label="Soundpad"><option value="soundpad">Tocar som do Soundpad</option><option value="soundpad_stop">Parar Soundpad</option></optgroup><optgroup label="OBS Studio"><option value="obs_scene">Trocar cena</option><option value="obs_mute">Alternar mudo</option><option value="obs_stream">Iniciar / parar live</option><option value="obs_record">Iniciar / parar gravação</option></optgroup></select></label>
+        <label class="field">Nome da tecla<input id="buttonLabel" maxlength="40" autocomplete="off" placeholder="Ex.: Microfone"></label>
+        <div class="field"><span>Ícone</span><div id="iconPicker" class="icon-picker"></div></div>
+        <div class="field"><span>Cor da tecla</span><div id="colorPicker" class="color-picker"></div></div>
+        <div class="form-divider"></div>
+        <section id="actionApp" class="action-fields" hidden><label class="field">Aplicativo<div class="input-action"><input id="buttonAppTarget" maxlength="2048" autocomplete="off" placeholder="Caminho do aplicativo"><button id="browseApp" class="icon-button outlined" type="button" aria-label="Escolher arquivo" title="Escolher arquivo"><span data-icon="folder"></span></button></div></label><button id="chooseApp" class="button secondary full" type="button"><span data-icon="app"></span>Procurar apps instalados</button><label class="field top-gap">Argumentos <span class="optional">opcional</span><input id="buttonArguments" maxlength="2048" placeholder="Parâmetros para abrir o app" autocomplete="off"></label><p class="field-help">O aplicativo será aberto no PC. Aceita arquivos .exe, .lnk e .url.</p></section>
+        <section id="actionUrl" class="action-fields" hidden><label class="field">Endereço do site<input id="buttonUrl" type="url" placeholder="https://twitch.tv" autocomplete="off"></label></section>
+        <section id="actionSoundpad" class="action-fields" hidden><label class="field">Número do som<input id="buttonSoundIndex" type="number" min="1" max="100000" step="1" placeholder="1"></label><p class="field-help">Use o número exibido na lista do Soundpad. O programa precisa estar aberto no computador.</p><button id="soundpadSettings" class="text-button" type="button">Configurar caminho do Soundpad</button></section>
+        <section id="actionSoundpadStop" class="action-fields" hidden><p class="field-help">Interrompe o som em reprodução no Soundpad.</p></section>
+        <section id="actionHotkey" class="action-fields" hidden><label class="field">Combinação de teclas<input id="buttonKeys" maxlength="120" placeholder="CTRL+ALT+1" autocomplete="off"></label><p class="field-help">Ex.: CTRL+ALT+1, CTRL+SHIFT+M ou F13. O atalho é enviado ao aplicativo ativo no PC.</p></section>
+        <section id="actionMedia" class="action-fields" hidden><label class="field">Controle de mídia<select id="buttonMedia"><option value="play_pause">Reproduzir / pausar</option><option value="next">Próxima faixa</option><option value="previous">Faixa anterior</option><option value="volume_up">Aumentar volume</option><option value="volume_down">Diminuir volume</option><option value="mute">Ativar / desativar mudo</option></select></label></section>
+        <section id="actionObs" class="action-fields" hidden><div class="obs-connection-row"><span id="inspectorObsStatus" class="field-help">Consultando OBS…</span><button id="refreshObs" class="icon-button small" type="button" aria-label="Atualizar OBS" title="Atualizar OBS"><span data-icon="refresh"></span></button></div><label id="obsTargetField" class="field"><span id="obsTargetLabel">Cena</span><select id="buttonObsTarget"></select></label><p id="obsActionHelp" class="field-help"></p><button id="obsSettings" class="text-button" type="button">Configurar conexão com OBS</button></section>
+        <div class="form-divider"></div>
+        <label class="check-field"><input id="buttonConfirm" type="checkbox"><span>Pedir confirmação no celular</span></label>
+        <label class="field top-gap">Posição no painel<select id="buttonSlot"></select></label>
+        <button id="deleteButton" type="button" class="button danger-ghost full"><span data-icon="trash"></span>Remover tecla</button>
+      </form>
+    </aside>
+  </main>
+  <dialog id="settingsDialog" class="dialog settings-dialog">
+    <div class="dialog-heading"><div><span class="eyebrow">DO SEU JEITO</span><h2>Configurações do deck</h2></div><button class="icon-button" data-close="settingsDialog" aria-label="Fechar"><span data-icon="close"></span></button></div>
+    <label class="field">Nome do deck<input id="configTitle" maxlength="60" placeholder="Meu StreamCell"></label>
+    <div class="settings-section"><h3><span data-icon="broadcast"></span>OBS Studio</h3><p class="field-help">No OBS, abra Ferramentas → Configurações do servidor WebSocket e ative o servidor.</p><label class="field">Porta do WebSocket<input id="obsPort" type="number" min="1" max="65535" value="4455"></label><label class="field">Senha do WebSocket<input id="obsPassword" type="password" maxlength="512" autocomplete="new-password" placeholder="Digite a senha configurada no OBS"></label><p id="obsPasswordHelp" class="field-help"></p><label class="check-field"><input id="obsClearPassword" type="checkbox"><span>Remover senha salva</span></label><p class="field-help">O OBS deve estar neste computador. As credenciais ficam salvas somente nele.</p></div>
+    <div class="settings-section"><h3><span data-icon="music"></span>Soundpad</h3><label class="field">Caminho do Soundpad<div class="input-action"><input id="soundpadPath" maxlength="1024" placeholder="Escolha o Soundpad.exe" autocomplete="off"><button id="browseSoundpad" class="icon-button outlined" aria-label="Escolher Soundpad" title="Escolher Soundpad"><span data-icon="folder"></span></button></div></label><p class="field-help">Selecione o executável instalado no seu PC.</p></div>
+    <div class="dialog-actions"><button class="button secondary" data-close="settingsDialog">Cancelar</button><button id="applySettings" class="button primary">Aplicar ao deck</button></div>
+  </dialog>
+  <dialog id="phoneDialog" class="dialog phone-dialog">
+    <div class="dialog-heading"><div><span class="eyebrow">PRONTO PARA USAR</span><h2>Conectar seu celular</h2></div><button class="icon-button" data-close="phoneDialog" aria-label="Fechar"><span data-icon="close"></span></button></div>
+    <ol class="connection-steps"><li><span class="step-number">1</span><div><strong>Conecte na mesma rede Wi-Fi</strong><p>Deixe este programa aberto no computador.</p></div></li><li><span class="step-number">2</span><div><strong>Abra este endereço no celular</strong><div id="phoneAddresses" class="address-list"></div></div></li><li><span class="step-number">3</span><div><strong>Digite este código no celular</strong><div id="phonePairCode" class="phone-pair-code">------</div></div></li></ol>
+    <div class="phone-tip"><span data-icon="phone"></span><p>No navegador do celular, use <strong>Adicionar à tela inicial</strong> para abrir o deck como um app.</p></div>
+    <div class="phone-dialog-footer"><span id="phoneCount" class="field-help">Consultando conexões…</span><button id="revokePhones" class="text-button danger-text">Desconectar todos</button></div>
+    <p id="phoneInfoError" class="inline-error" hidden></p>
+  </dialog>
+  <dialog id="appsDialog" class="dialog apps-dialog">
+    <div class="dialog-heading"><div><span class="eyebrow">NO SEU COMPUTADOR</span><h2>Escolher aplicativo</h2></div><button class="icon-button" data-close="appsDialog" aria-label="Fechar"><span data-icon="close"></span></button></div>
+    <label class="field">Buscar aplicativo<input id="appSearch" type="search" placeholder="Digite o nome do aplicativo" autocomplete="off"></label><div id="appsList" class="apps-list"></div>
+    <p class="field-help">Não encontrou? Use o ícone de pasta no editor para escolher o arquivo.</p>
+  </dialog>
+  <dialog id="textDialog" class="dialog compact-dialog"><div class="dialog-heading"><h2 id="textDialogTitle">Nome da página</h2><button class="icon-button" data-close="textDialog" aria-label="Fechar"><span data-icon="close"></span></button></div><form id="textDialogForm"><label class="field">Nome<input id="textDialogInput" maxlength="30" required autocomplete="off"></label><div class="dialog-actions"><button class="button secondary" type="button" data-close="textDialog">Cancelar</button><button class="button primary" type="submit">Confirmar</button></div></form></dialog>
+  <dialog id="adminConfirmDialog" class="dialog compact-dialog"><div class="dialog-heading"><h2 id="adminConfirmTitle">Confirmar</h2><button class="icon-button" data-close="adminConfirmDialog" aria-label="Fechar"><span data-icon="close"></span></button></div><p id="adminConfirmText"></p><div class="dialog-actions"><button class="button secondary" data-close="adminConfirmDialog">Cancelar</button><button id="adminConfirmAccept" class="button danger">Confirmar</button></div></dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

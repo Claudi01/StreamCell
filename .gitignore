@@ -1,0 +1,27 @@
+# User-specific configuration and credentials
+config.json
+config.json.*
+decklocal.json
+.env
+.env.*
+# Generated files
+*.exe
+*.dll
+*.pdb
+*.zip
+build/
+bin/
+obj/
+.vs/
+# Superseded local prototype, never published
+/index.html
+/app.js
+/styles.css
+/manifest.webmanifest
+/icon.svg
+/LEIA-ME.md
+/Iniciar Deck Local.bat
+/run_server.py
+/DeckLocal.csproj
+/DeckLocal.manifest
+/decklocal.example.json

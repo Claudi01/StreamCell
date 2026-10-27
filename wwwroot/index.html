@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#101115">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>StreamCell · Seu deck</title>
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="stylesheet" href="/styles.css">
+  <script defer src="/shared.js"></script>
+  <script defer src="/app.js"></script>
+</head>
+<body class="controller">
+  <div id="controllerShell" class="controller-shell" hidden>
+    <header class="controller-header">
+      <a class="brand" href="/" aria-label="StreamCell"><span class="brand-mark" data-icon="grid"></span><span>Stream<span class="brand-light">Cell</span></span></a>
+      <div class="controller-tools">
+        <span id="connectionStatus" class="connection-pill"><i></i><span>Conectando</span></span>
+        <button class="icon-button" id="fullscreenButton" aria-label="Tela cheia" title="Tela cheia"><span data-icon="expand"></span></button>
+      </div>
+    </header>
+    <main class="controller-main">
+      <div class="deck-title-row"><div><span class="eyebrow">SEU CONTROLE, NA MÃO</span><h1 id="deckTitle">Meu StreamCell</h1></div><span id="mobilePageNumber" class="page-counter">01 / 01</span></div>
+      <section class="deck-frame controller-frame" aria-label="Teclas do painel">
+        <div id="mobileGrid" class="deck-grid controller-grid"></div>
+      </section>
+      <nav class="deck-navigation" aria-label="Páginas do painel">
+        <button id="previousPage" class="icon-button page-arrow" aria-label="Página anterior"><span data-icon="left"></span></button>
+        <div id="mobilePages" class="mobile-pages"></div>
+        <button id="nextPage" class="icon-button page-arrow" aria-label="Próxima página"><span data-icon="right"></span></button>
+      </nav>
+      <p id="controllerHint" class="controller-hint">Toque em uma tecla para executar no computador.</p>
+    </main>
+    <footer class="controller-footer"><span id="obsStatus">OBS desconectado</span><span class="footer-dot">·</span><span>Configurado pelo PC</span><button id="disconnectButton" class="text-button">Desconectar</button></footer>
+  </div>
+
+  <main id="pairingScreen" class="pairing-screen">
+    <div class="pairing-visual" aria-hidden="true"><div class="mini-key"><span data-icon="mic"></span></div><div class="mini-key"><span data-icon="scene"></span></div><div class="mini-key"><span data-icon="music"></span></div></div>
+    <a class="brand" href="/"><span class="brand-mark" data-icon="grid"></span><span>Stream<span class="brand-light">Cell</span></span></a>
+    <span class="eyebrow">SEU CELULAR VIROU UM STREAM DECK</span>
+    <h1>Seu setup.<br>Um toque de distância.</h1>
+    <p>Configure no computador. Controle pelo celular.</p>
+    <form id="pairForm" class="pairing-card">
+      <label for="pairCode">Código de conexão</label>
+      <p class="field-help">No StreamCell do PC, abra <strong>Conectar celular</strong> e informe o código mostrado lá.</p>
+      <input id="pairCode" name="code" class="pair-code-input" inputmode="text" autocapitalize="characters" spellcheck="false" autocomplete="one-time-code" maxlength="12" placeholder="A1B2C3D4" required aria-describedby="pairError">
+      <p id="pairError" class="inline-error" role="alert" hidden></p>
+      <button id="pairButton" class="button primary" type="submit"><span data-icon="phone"></span>Conectar ao meu PC</button>
+    </form>
+    <p class="pairing-note">Celular e PC precisam estar na mesma rede Wi-Fi.<br>Deixe o StreamCell aberto no computador.</p>
+  </main>
+
+  <dialog id="confirmDialog" class="dialog compact-dialog">
+    <div class="dialog-heading"><span class="dialog-symbol" data-icon="bolt"></span><button class="icon-button" id="cancelConfirmTop" aria-label="Cancelar"><span data-icon="close"></span></button></div>
+    <h2>Executar esta ação?</h2>
+    <p id="confirmLabel"></p>
+    <div class="dialog-actions"><button id="cancelConfirm" class="button secondary">Cancelar</button><button id="acceptConfirm" class="button primary">Executar</button></div>
+  </dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
