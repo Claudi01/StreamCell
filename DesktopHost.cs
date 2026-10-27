@@ -60,6 +60,7 @@ namespace StreamCell
             using (var browser = new WebView2())
             {
                 form.Text = "StreamCell · Editor do deck";
+                form.Icon = System.Drawing.Icon.ExtractAssociatedIcon(Application.ExecutablePath);
                 form.MinimumSize = new System.Drawing.Size(1000, 680);
                 form.Size = new System.Drawing.Size(1440, 900);
                 form.StartPosition = FormStartPosition.CenterScreen;

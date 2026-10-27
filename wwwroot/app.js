@@ -182,11 +182,11 @@
     $("pairButton").disabled = true;
     $("pairError").hidden = true;
     try {
-      var result = await request("/api/pair", {code:code,username:$("pairUsername").value.trim(),password:$("pairPassword").value});
+      var result = await request("/api/pair", {code:code});
       if (!result.token) throw new Error("O PC não enviou a conexão. Tente novamente.");
       token = result.token;
       try { localStorage.setItem("streamcell.phoneToken",token); } catch (_) {}
-      $("pairCode").value = ""; $("pairPassword").value = "";
+      $("pairCode").value = "";
       showController();
       await poll();
     } catch (error) {

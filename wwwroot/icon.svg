@@ -1,1 +1,23 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><rect width="128" height="128" rx="30" fill="#15131d"/><g fill="none" stroke="#b29bff" stroke-width="5"><rect x="25" y="25" width="29" height="29" rx="7"/><rect x="74" y="25" width="29" height="29" rx="7"/><rect x="25" y="74" width="29" height="29" rx="7"/><rect x="74" y="74" width="29" height="29" rx="7"/></g><rect x="81" y="81" width="15" height="15" rx="4" fill="#b29bff"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="shell" x1="18" y1="10" x2="110" y2="122" gradientUnits="userSpaceOnUse"><stop stop-color="#1b3155"/><stop offset="1" stop-color="#111827"/></linearGradient>
+    <linearGradient id="mint" x1="28" y1="25" x2="46" y2="46" gradientUnits="userSpaceOnUse"><stop stop-color="#62f0da"/><stop offset="1" stop-color="#18b9c8"/></linearGradient>
+    <linearGradient id="blue" x1="54" y1="25" x2="74" y2="47" gradientUnits="userSpaceOnUse"><stop stop-color="#72d7ff"/><stop offset="1" stop-color="#4285ff"/></linearGradient>
+    <linearGradient id="violet" x1="82" y1="25" x2="101" y2="48" gradientUnits="userSpaceOnUse"><stop stop-color="#c3a4ff"/><stop offset="1" stop-color="#8d68f2"/></linearGradient>
+  </defs>
+  <rect x="3" y="3" width="122" height="122" rx="34" fill="#080d18"/>
+  <rect x="7" y="7" width="114" height="114" rx="30" fill="url(#shell)" stroke="#344969" stroke-width="2"/>
+  <path d="M18 44c8-18 23-28 46-28 18 0 32 8 43 21" fill="none" stroke="#fff" stroke-opacity=".07" stroke-width="3" stroke-linecap="round"/>
+  <g stroke="#fff" stroke-opacity=".12" stroke-width="1.2">
+    <rect x="25" y="24" width="22" height="22" rx="7" fill="url(#mint)"/>
+    <rect x="53" y="24" width="22" height="22" rx="7" fill="url(#blue)"/>
+    <rect x="81" y="24" width="22" height="22" rx="7" fill="url(#violet)"/>
+    <rect x="25" y="53" width="22" height="22" rx="7" fill="#467cff"/>
+    <rect x="53" y="53" width="22" height="22" rx="7" fill="#22c9c8"/>
+    <rect x="81" y="53" width="22" height="22" rx="7" fill="#9273f5"/>
+    <rect x="25" y="82" width="22" height="22" rx="7" fill="#8267ed"/>
+    <rect x="53" y="82" width="22" height="22" rx="7" fill="#348fea"/>
+    <rect x="81" y="82" width="22" height="22" rx="7" fill="#36d1bd"/>
+  </g>
+  <path d="M62 59.2v9.6c0 1 1.1 1.6 2 1.1l7.1-4.8c.8-.5.8-1.7 0-2.2L64 58.1c-.9-.5-2 .1-2 1.1Z" fill="#f7fbff"/>
+</svg>

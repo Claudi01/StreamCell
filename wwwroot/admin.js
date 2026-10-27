@@ -373,24 +373,6 @@
     });
   });
 
-  function renderUsers(users) {
-    var list=$("userList");list.replaceChildren();
-    if(!users.length){var empty=document.createElement("p");empty.className="field-help";empty.textContent="Nenhuma conta ainda. Crie a primeira para liberar o acesso ao celular.";list.append(empty);return;}
-    users.forEach(function(user){
-      var row=document.createElement("div");row.className="user-entry";
-      var name=document.createElement("span");name.textContent=user.username+" · "+(user.role==="admin"?"Administrador":"Usuário");
-      var remove=document.createElement("button");remove.type="button";remove.className="text-button danger-text";remove.textContent="Remover";
-      remove.addEventListener("click",async function(){if(!window.confirm("Remover "+user.username+" e desconectar seus celulares?"))return;try{var result=await api("/api/admin/users/remove",{id:user.id});renderUsers(result.users||[]);U.toast("Usuário removido.");}catch(error){U.toast(error.message,true);}});
-      row.append(name,remove);list.append(row);
-    });
-  }
-  async function loadUsers(){var result=await api("/api/admin/users");renderUsers(result.users||[]);}
-  $("userCreateForm").addEventListener("submit",async function(event){
-    event.preventDefault();var username=$("newUsername").value.trim(),password=$("newPassword").value;
-    if(password.length<10){U.toast("A senha precisa ter pelo menos 10 caracteres.",true);return;}
-    try{var result=await api("/api/admin/users/create",{username:username,password:password});$("newUsername").value="";$("newPassword").value="";renderUsers((await api("/api/admin/users")).users||[]);U.toast(result.firstAdmin?"Administrador criado. Agora conecte o celular com esta conta.":"Usuário criado.");}
-    catch(error){U.toast(error.message,true);}
-  });
   function openSettings() {
     if (!config) return;
     $("configTitle").value = config.title || "Meu StreamCell";
@@ -399,7 +381,7 @@
     $("obsClearPassword").checked = !!config.obs.clearPassword;
     $("obsPasswordHelp").textContent = config.obs.passwordSet ? "Já existe uma senha salva. Deixe o campo vazio para mantê-la." : "Informe a senha definida no OBS. Se a autenticação estiver desativada, deixe vazio.";
     $("soundpadPath").value = config.soundpadPath || "";
-    loadUsers().catch(function(error){$("userList").textContent=error.message;});
+
     $("settingsDialog").showModal();
   }
   $("openSettings").addEventListener("click",openSettings);

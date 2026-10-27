@@ -1,7 +1,6 @@
-## StreamCell 0.3.0
+## StreamCell 0.4.0
 
-- Aplicativos nativos para Windows e Android.
-- Fotos nas teclas e QR de conexão que abre o app com endereço e código preenchidos.
-- Contas locais por dispositivo e configuração OBS preservada entre atualizações.
-- Grade configurável por página, entre 2–8 colunas e 2–6 linhas.
-- Configuração local fora do executável; substitua os binários sem apagar o deck.
+- Pareamento simplificado: conecte usando somente o código temporário exibido no PC.
+- Ícone novo no aplicativo Windows e no Android.
+- Fotos nas teclas, QR para abrir o app com endereço e código preenchidos e grade configurável por página.
+- Configurações locais preservadas nas atualizações.

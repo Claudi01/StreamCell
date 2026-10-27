@@ -12,8 +12,8 @@ using System.Threading;
 using System.Windows.Forms;
 
 [assembly: AssemblyTitle("StreamCell")]
-[assembly: AssemblyVersion("0.3.0.0")]
-[assembly: AssemblyFileVersion("0.3.0.0")]
+[assembly: AssemblyVersion("0.4.0.0")]
+[assembly: AssemblyFileVersion("0.4.0.0")]
 namespace StreamCell
 {
     internal sealed class Request
@@ -32,9 +32,6 @@ namespace StreamCell
     {
         public DateTime LastSeen = DateTime.UtcNow;
         public DateTime LastAction = DateTime.MinValue;
-        public string UserId = "";
-        public string Username = "";
-        public bool IsAdmin;
     }
     internal sealed class PairAttempts
     {
@@ -43,12 +40,11 @@ namespace StreamCell
     }
     internal static class Program
     {
-        internal const string Version = "0.3.0";
+        internal const string Version = "0.4.0";
         private static int port = 8765;
         private static string adminToken = Codec.RandomToken(32);
         private static string pairCode = Codec.RandomToken(4);
         private static ConfigStore store;
-        private static AccountStore accounts;
         private static ObsBridge obs;
         private static readonly object sessionsGate = new object();
         private static readonly object actionGate = new object();
@@ -75,7 +71,6 @@ namespace StreamCell
                 }
                 if(port < 1024 || port > 65535) throw new ArgumentException("Porta inválida.");
                 store = new ConfigStore(dataDir);
-                accounts = new AccountStore(dataDir);
                 obs = new ObsBridge();
                 var config = store.Snapshot(); obs.Configure(config.obs.port, ConfigStore.Password(config));
                 RefreshAddresses();
@@ -210,7 +205,7 @@ namespace StreamCell
             lock(sessionsGate)
             {
                 PhoneSession session;
-                if(!sessions.TryGetValue(req.Header("X-StreamCell-Token"),out session) || session.LastSeen<DateTime.UtcNow.AddDays(-30) || !accounts.Exists(session.UserId)) throw new ApiError(401,"Pareie este celular novamente.");
+                if(!sessions.TryGetValue(req.Header("X-StreamCell-Token"),out session) || session.LastSeen<DateTime.UtcNow.AddDays(-30)) throw new ApiError(401,"Pareie este celular novamente.");
                 session.LastSeen=DateTime.UtcNow; return session;
             }
         }
@@ -228,18 +223,6 @@ namespace StreamCell
             if(req.Path.StartsWith("/api/admin/",StringComparison.Ordinal))
             {
                 RequireAdmin(req);
-                if(req.Method=="GET" && req.Path=="/api/admin/users") {SendJson(stream,new {users=accounts.List()});return;}
-                if(req.Method=="POST" && req.Path=="/api/admin/users/create")
-                {
-                    var body=Body(req); object created; bool admin=accounts.Create(Text(body,"username"),Text(body,"password"),out created);
-                    SendJson(stream,new {user=created,firstAdmin=admin});return;
-                }
-                if(req.Method=="POST" && req.Path=="/api/admin/users/remove")
-                {
-                    string id=Text(Body(req),"id");accounts.Remove(id);
-                    lock(sessionsGate) foreach(var expired in sessions.Where(x=>x.Value.UserId==id).Select(x=>x.Key).ToList()) sessions.Remove(expired);
-                    SendJson(stream,new {users=accounts.List()});return;
-                }
                 if(req.Method=="GET" && req.Path=="/api/admin/config") { SendJson(stream,store.AdminView());return; }
                 if(req.Method=="POST" && req.Path=="/api/admin/config")
                 {
@@ -277,7 +260,7 @@ namespace StreamCell
         private static void Pair(NetworkStream stream,Request req)
         {
             var body=Body(req);
-            if(body.Keys.Any(k=>k!="code" && k!="username" && k!="password")) throw new ApiError(400,"Campos de conexão inválidos.");
+            if(body.Keys.Any(k=>k!="code")) throw new ApiError(400,"Envie somente o código temporário de conexão.");
             string code=Text(body,"code").Replace("-","").Replace(" ","").ToUpperInvariant();
             lock(sessionsGate)
             {
@@ -286,15 +269,14 @@ namespace StreamCell
                 if(++attempt.Count>10) throw new ApiError(429,"Muitas tentativas. Aguarde um minuto.");
                 if(!Codec.Equal(code,pairCode)) throw new ApiError(401,"Código incorreto. Confira o editor no PC.");
             }
-            var user=accounts.Authenticate(Text(body,"username"),Text(body,"password"));
             lock(sessionsGate)
             {
                 if(!Codec.Equal(code,pairCode)) throw new ApiError(401,"O código mudou. Leia o QR novamente.");
                 foreach(var expired in sessions.Where(x=>x.Value.LastSeen<DateTime.UtcNow.AddDays(-30)).Select(x=>x.Key).ToList()) sessions.Remove(expired);
                 if(sessions.Count>=32) throw new ApiError(409,"Limite de dispositivos. Revogue os acessos pelo PC.");
                 string token=Codec.RandomToken(32);
-                sessions.Add(token,new PhoneSession { UserId=user.id, Username=user.username, IsAdmin=user.role=="admin" });
-                SendJson(stream,new { token,username=user.username });
+                sessions.Add(token,new PhoneSession());
+                SendJson(stream,new { token });
             }
         }
         private static object MobileDeck()

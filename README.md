@@ -15,9 +15,9 @@ No Android, instale o APK. Se o Android pedir autorização, permita instalar ap
 
 ## Conectar o celular
 
-1. No editor do PC, abra **Configurações → Acesso dos celulares** e crie um usuário e uma senha. A primeira conta será administradora.
-2. Selecione **Conectar celular** no PC e leia o QR com a câmera do Android. O QR abre o StreamCell e preenche o endereço do PC e o código temporário.
-3. Digite no app a senha da conta criada no PC e toque em **Conectar**.
+1. Conecte o PC e o celular à mesma rede Wi-Fi.
+2. No editor do PC, selecione **Conectar celular** e leia o QR com o StreamCell Android. O QR preenche o endereço e o código temporário.
+3. Confira o endereço e o código preenchidos no app e toque em **Conectar**. Não há usuário ou senha para criar.
 
 Se o QR não abrir o app, informe manualmente no Android o endereço mostrado pelo PC e o código temporário. Celular e computador precisam continuar na mesma rede.
 
@@ -32,17 +32,17 @@ O editor oferece ações de computador e de live:
 
 Para OBS, ative o servidor WebSocket nas configurações do OBS. A porta e a senha ficam salvas localmente; a senha é protegida pelo Windows para a conta atual. O caminho do Soundpad e o deck também ficam na pasta local do StreamCell.
 
-Usuários e credenciais são guardados no computador, em %LOCALAPPDATA%\StreamCell. As senhas das contas são armazenadas como hashes protegidos por PBKDF2; elas não são enviadas ao repositório. O aplicativo do PC e o Android conversam apenas pela rede local e não usam um servidor na nuvem.
+O código de conexão é temporário e o PC limita as tentativas. O token do celular fica guardado no próprio Android até você desconectá-lo. O aplicativo do PC e o Android conversam apenas pela rede local e não usam um servidor na nuvem.
 
 ## Atualizar sem perder o workspace
 
-O botão **Atualizar** abre a página oficial de versões. Feche o StreamCell, baixe o novo executável e substitua o antigo. No Android, instale o APK da versão nova por cima do app atual. O Windows conserva config.json e os usuários em %LOCALAPPDATA%\StreamCell; a atualização do executável não substitui essa pasta. A assinatura beta consistente permite atualizar o APK mantendo a conexão salva no celular.
+O botão **Atualizar** abre a página oficial de versões. Feche o StreamCell, baixe o novo executável e substitua o antigo. No Android, instale o APK da versão nova por cima do app atual. O Windows conserva o deck e as configurações em %LOCALAPPDATA%\StreamCell; a atualização do executável não substitui essa pasta. A assinatura beta consistente permite atualizar o APK mantendo a conexão salva no celular.
 
 O sistema de compilação publica executáveis separados por versão. O arquivo SHA256SUMS.txt na Release permite conferir os hashes dos downloads.
 
 ## Privacidade do repositório
 
-O repositório contém código-fonte e uma chave beta de assinatura do APK, sem o deck, senha do OBS, usuários ou outros dados do computador. Leia SECURITY.md para entender o limite dessa chave de demonstração antes de instalar versões.
+O repositório contém código-fonte e uma chave beta de assinatura do APK, sem o deck, senha do OBS ou outros dados do computador. Leia SECURITY.md para entender o limite dessa chave de demonstração antes de instalar versões.
 
 ## Compilar
 

@@ -46,8 +46,8 @@ public final class MainActivity extends Activity {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
     private final Runnable pollTask = new Runnable() { @Override public void run() { refreshDeck(); } };
-    private EditText serverField, userField, passwordField, codeField;
-    private String server = "", username = "", token = "", currentPage = "", deckSignature = "";
+    private EditText serverField, codeField;
+    private String server = "", token = "", currentPage = "", deckSignature = "";
     private JSONObject deck;
     private boolean polling;
     private LinearLayout root;
@@ -58,8 +58,8 @@ public final class MainActivity extends Activity {
         Window w = getWindow(); w.setStatusBarColor(BG); w.setNavigationBarColor(BG);
         token = getPreferences(MODE_PRIVATE).getString("token", "");
         server = getPreferences(MODE_PRIVATE).getString("server", "");
-        username = getPreferences(MODE_PRIVATE).getString("username", "");
-        if (token.length() > 0 && server.length() > 0) refreshDeck(); else showLogin("", "");
+        getPreferences(MODE_PRIVATE).edit().remove("username").apply();
+        if (token.length() > 0 && server.length() > 0) refreshDeck(); else showConnect("", "");
         receivePairIntent(getIntent());
     }
 
@@ -72,7 +72,7 @@ public final class MainActivity extends Activity {
         if (uri == null || !"streamcell".equals(uri.getScheme()) || !"pair".equals(uri.getHost())) return;
         String host = uri.getQueryParameter("server"), code = uri.getQueryParameter("code");
         token = ""; getPreferences(MODE_PRIVATE).edit().remove("token").apply();
-        showLogin(host == null ? "" : host, code == null ? "" : code);
+        showConnect(host == null ? "" : host, code == null ? "" : code);
     }
 
     private int dp(float v) { return (int)(v * getResources().getDisplayMetrics().density + 0.5f); }
@@ -93,39 +93,39 @@ public final class MainActivity extends Activity {
         Button b = new Button(this); b.setText(label); b.setTextColor(TEXT); b.setAllCaps(false); b.setTextSize(14);
         b.setBackground(shape(Color.rgb(64,48,92), Color.rgb(120,91,165))); return b;
     }
-    private void showLogin(String prefillServer, String prefillCode) {
+    private void showConnect(String prefillServer, String prefillCode) {
         token = ""; deck = null; polling = false; handler.removeCallbacks(pollTask);
         ScrollView scroll = new ScrollView(this); scroll.setFillViewport(true); scroll.setBackgroundColor(BG);
         LinearLayout page = new LinearLayout(this); page.setOrientation(LinearLayout.VERTICAL); page.setGravity(Gravity.CENTER_HORIZONTAL);
         page.setPadding(dp(24),dp(30),dp(24),dp(26)); scroll.addView(page);
-        TextView brand=text("▦  StreamCell",27,TEXT); brand.setTypeface(null,Typeface.BOLD); brand.setGravity(Gravity.CENTER); page.addView(brand,new LinearLayout.LayoutParams(-1,dp(58)));
+        LinearLayout brand=new LinearLayout(this); brand.setGravity(Gravity.CENTER); ImageView brandIcon=new ImageView(this); brandIcon.setImageResource(R.mipmap.ic_launcher); brand.addView(brandIcon,new LinearLayout.LayoutParams(dp(44),dp(44))); TextView brandName=text("StreamCell",24,TEXT); brandName.setTypeface(null,Typeface.BOLD); LinearLayout.LayoutParams brandNameLp=new LinearLayout.LayoutParams(-2,-1); brandNameLp.leftMargin=dp(10); brand.addView(brandName,brandNameLp); page.addView(brand,new LinearLayout.LayoutParams(-1,dp(58)));
         TextView title=text("Conectar ao seu PC",23,TEXT); title.setTypeface(null,Typeface.BOLD); title.setGravity(Gravity.CENTER); LinearLayout.LayoutParams titleLp=new LinearLayout.LayoutParams(-1,dp(52)); titleLp.topMargin=dp(28); page.addView(title,titleLp);
         TextView help=text("Celular e computador precisam estar na mesma rede Wi-Fi.",13,MUTED); help.setGravity(Gravity.CENTER); page.addView(help,new LinearLayout.LayoutParams(-1,dp(48)));
         LinearLayout card=new LinearLayout(this); card.setOrientation(LinearLayout.VERTICAL); card.setPadding(dp(18),dp(20),dp(18),dp(18)); card.setBackground(shape(PANEL,Color.rgb(61,54,78)));
         LinearLayout.LayoutParams cardLp=new LinearLayout.LayoutParams(-1,-2); cardLp.topMargin=dp(20); page.addView(card,cardLp);
         serverField=field("Endereço do StreamCell no PC",android.text.InputType.TYPE_CLASS_TEXT|android.text.InputType.TYPE_TEXT_VARIATION_URI); serverField.setText(prefillServer.length()>0?prefillServer:server); card.addView(serverField);
-        userField=field("Usuário criado no PC",android.text.InputType.TYPE_CLASS_TEXT|android.text.InputType.TYPE_TEXT_VARIATION_PERSON_NAME); userField.setText(username); card.addView(userField);
-        passwordField=field("Senha",android.text.InputType.TYPE_CLASS_TEXT|android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD); passwordField.setTransformationMethod(new android.text.method.PasswordTransformationMethod()); card.addView(passwordField);
+
+
         codeField=field("Código de conexão (8 caracteres)",android.text.InputType.TYPE_CLASS_TEXT|android.text.InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS); codeField.setText(prefillCode); codeField.setLetterSpacing(0.2f); card.addView(codeField);
         Button connect=button("Conectar"); LinearLayout.LayoutParams connectLp=new LinearLayout.LayoutParams(-1,dp(50)); connectLp.topMargin=dp(4); card.addView(connect,connectLp);
         connect.setOnClickListener(v -> connect());
-        TextView foot=text("O deck e as senhas do OBS ficam salvos no computador.",12,MUTED); foot.setGravity(Gravity.CENTER); LinearLayout.LayoutParams footLp=new LinearLayout.LayoutParams(-1,dp(64)); footLp.topMargin=dp(14); page.addView(foot,footLp);
+        TextView foot=text("O deck e as configurações do OBS ficam salvos no computador.",12,MUTED); foot.setGravity(Gravity.CENTER); LinearLayout.LayoutParams footLp=new LinearLayout.LayoutParams(-1,dp(64)); footLp.topMargin=dp(14); page.addView(foot,footLp);
         setContentView(scroll);
     }
 
     private void connect() {
-        final String host=normalizeServer(serverField.getText().toString()), user=userField.getText().toString().trim(), pass=passwordField.getText().toString(), code=codeField.getText().toString().replaceAll("[\\s-]","").toUpperCase();
-        if(host.length()==0||user.length()==0||pass.length()==0||code.length()==0){toast("Preencha o endereço, usuário, senha e código.");return;}
+        final String host=normalizeServer(serverField.getText().toString()), code=codeField.getText().toString().replaceAll("[\\s-]","").toUpperCase();
+        if(host.length()==0||code.length()==0){toast("Informe o endereço e o código do StreamCell no PC.");return;}
         hideKeyboard();
         try { new URL(host); } catch(Exception e){toast("O endereço deve começar com http:// e apontar para o PC.");return;}
         worker.execute(() -> {
             try {
-                JSONObject body=new JSONObject(); body.put("code",code); body.put("username",user); body.put("password",pass);
+                JSONObject body=new JSONObject(); body.put("code",code);
                 JSONObject result=send(host,"/api/pair",body,null);
                 String newToken=result.optString("token","");
                 if(newToken.length()==0)throw new Exception("O PC não enviou a conexão.");
-                token=newToken; server=host; username=user; getPreferences(MODE_PRIVATE).edit().putString("token",token).putString("server",server).putString("username",username).apply();
-                runOnUiThread(() -> { passwordField.setText(""); toast("Conectado ao StreamCell."); refreshDeck(); });
+                token=newToken; server=host; getPreferences(MODE_PRIVATE).edit().putString("token",token).putString("server",server).remove("username").apply();
+                runOnUiThread(() -> { codeField.setText(""); toast("Conectado ao StreamCell."); refreshDeck(); });
             } catch(Exception e) { runOnUiThread(() -> toast(e.getMessage())); }
         });
     }
@@ -167,7 +167,7 @@ public final class MainActivity extends Activity {
                 runOnUiThread(() -> {
                     polling=false;
                     if(e.getMessage()!=null&&(e.getMessage().contains("Pareie")||e.getMessage().contains("conexão"))) {
-                        getPreferences(MODE_PRIVATE).edit().remove("token").apply();token="";showLogin(server,"");toast("Conecte novamente usando o código do PC.");
+                        getPreferences(MODE_PRIVATE).edit().remove("token").apply();token="";showConnect(server,"");toast("Conecte novamente usando o código do PC.");
                     } else { updateConnection(false);handler.postDelayed(pollTask,4000); }
                 });
             }
@@ -188,7 +188,7 @@ public final class MainActivity extends Activity {
         TextView brand=text("▦ StreamCell",19,TEXT);brand.setTypeface(null,Typeface.BOLD);header.addView(brand,new LinearLayout.LayoutParams(0,dp(46),1));
         statusView=text("● Conectado",11,Color.rgb(116,212,166));header.addView(statusView);
         Button disconnect=button("⋯");disconnect.setTextSize(22);disconnect.setPadding(0,0,0,dp(5));LinearLayout.LayoutParams dlp=new LinearLayout.LayoutParams(dp(48),dp(44));dlp.leftMargin=dp(6);header.addView(disconnect,dlp);
-        disconnect.setOnClickListener(v -> new AlertDialog.Builder(this).setTitle("Desconectar").setMessage("Remover a conexão salva deste celular?").setNegativeButton("Cancelar",null).setPositiveButton("Desconectar",(a,b)->{getPreferences(MODE_PRIVATE).edit().remove("token").apply();token="";showLogin(server,"");}).show());
+        disconnect.setOnClickListener(v -> new AlertDialog.Builder(this).setTitle("Desconectar").setMessage("Remover a conexão salva deste celular?").setNegativeButton("Cancelar",null).setPositiveButton("Desconectar",(a,b)->{getPreferences(MODE_PRIVATE).edit().remove("token").apply();token="";showConnect(server,"");}).show());
         root.addView(header);
         TextView title=text(deck.optString("title","Meu StreamCell"),22,TEXT);title.setTypeface(null,Typeface.BOLD);title.setPadding(dp(4),dp(5),dp(4),dp(13));root.addView(title);
         JSONObject page=selectedPage(); if(page!=null)currentPage=page.optString("id",currentPage);
