@@ -44,8 +44,9 @@ jobs:
           $version = [regex]::Match($source, 'const string Version = "([0-9.]+)"').Groups[1].Value
           if (-not $version) { throw 'Version missing' }
           $tag = 'v' + $version
-          gh release view $tag --repo $env:GITHUB_REPOSITORY 2>$null
-          if ($LASTEXITCODE -eq 0) { Write-Output 'Version already released'; exit 0 }
+          $releases = gh release list --repo $env:GITHUB_REPOSITORY --json tagName --limit 100
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot read existing releases' }
+          if (($releases | ConvertFrom-Json).tagName -contains $tag) { Write-Output 'Version already released'; exit 0 }
           Compress-Archive -Path build/StreamCell.exe,README.md -DestinationPath build/StreamCell-Windows.zip
           $hash = (Get-FileHash build/StreamCell.exe -Algorithm SHA256).Hash.ToLowerInvariant()
           ($hash + '  StreamCell.exe') | Set-Content build/SHA256SUMS.txt -Encoding ascii
