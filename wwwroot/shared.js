@@ -59,13 +59,23 @@
     el.dataset.slot = options.slot;
     if (button) {
       el.style.setProperty("--key-color", color(button.color));
-      var symbol = document.createElement("span");
-      symbol.className = "key-symbol";
-      symbol.innerHTML = icon(button.icon);
       var label = document.createElement("span");
       label.className = "key-label";
       label.textContent = button.label || "Sem título";
-      el.append(symbol, label);
+      if (button.image) {
+        el.classList.add("key-has-photo");
+        var photo = document.createElement("img");
+        photo.className = "key-photo";
+        photo.src = button.image;
+        photo.alt = "";
+        photo.draggable = false;
+        el.append(photo, label);
+      } else {
+        var symbol = document.createElement("span");
+        symbol.className = "key-symbol";
+        symbol.innerHTML = icon(button.icon);
+        el.append(symbol, label);
+      }
       if (button.active) {
         var dot = document.createElement("span");
         dot.className = "key-active-dot";

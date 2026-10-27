@@ -69,7 +69,10 @@
     $("deckTitle").textContent = deck.title || "Meu StreamCell";
     document.title = (deck.title || "Meu deck") + " · StreamCell";
     var grid = $("mobileGrid");
-    for (var slot = 0; slot < 15; slot++) {
+    var capacity = Math.min(48,Math.max(4,(page.columns||5)*(page.rows||3)));
+    grid.style.gridTemplateColumns = "repeat(" + (page.columns||5) + ", minmax(0,1fr))";
+    grid.style.gridTemplateRows = "repeat(" + (page.rows||3) + ", minmax(0,1fr))";
+    for (var slot = 0; slot < capacity; slot++) {
       var button = page && page.buttons.find(function (item) { return item.slot === slot; });
       var fresh = U.key(button, {slot:slot});
       if (button && running.has(button.id)) { fresh.classList.add("is-running"); fresh.disabled = true; }
@@ -90,6 +93,7 @@
       el._action = button;
       el.dataset.id = button ? button.id : "";
     }
+    while (grid.children.length > capacity) grid.lastElementChild.remove();
     grid.classList.toggle("grid-offline", !connected);
     var index = page ? deck.pages.indexOf(page) : 0;
     $("mobilePageNumber").textContent = String(index + 1).padStart(2,"0") + " / " + String(deck.pages.length || 1).padStart(2,"0");
@@ -178,11 +182,11 @@
     $("pairButton").disabled = true;
     $("pairError").hidden = true;
     try {
-      var result = await request("/api/pair", {code:code});
+      var result = await request("/api/pair", {code:code,username:$("pairUsername").value.trim(),password:$("pairPassword").value});
       if (!result.token) throw new Error("O PC não enviou a conexão. Tente novamente.");
       token = result.token;
       try { localStorage.setItem("streamcell.phoneToken",token); } catch (_) {}
-      $("pairCode").value = "";
+      $("pairCode").value = ""; $("pairPassword").value = "";
       showController();
       await poll();
     } catch (error) {
@@ -221,6 +225,7 @@
     if (!document.hidden && token) { clearTimeout(timer); poll(); }
   });
   window.addEventListener("online",function () { if (token) { clearTimeout(timer); poll(); } });
+  var initialPairCode = new URLSearchParams(location.search).get("pair"); if(initialPairCode) $("pairCode").value = initialPairCode.toUpperCase();
   if (token) { showController(); connection(false); poll(); }
   else showPairing();
 })();

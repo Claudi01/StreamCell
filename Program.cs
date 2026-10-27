@@ -9,10 +9,11 @@ using System.Net.Sockets;
 using System.Reflection;
 using System.Text;
 using System.Threading;
+using System.Windows.Forms;
 
 [assembly: AssemblyTitle("StreamCell")]
-[assembly: AssemblyVersion("0.2.0.0")]
-[assembly: AssemblyFileVersion("0.2.0.0")]
+[assembly: AssemblyVersion("0.3.0.0")]
+[assembly: AssemblyFileVersion("0.3.0.0")]
 namespace StreamCell
 {
     internal sealed class Request
@@ -31,6 +32,9 @@ namespace StreamCell
     {
         public DateTime LastSeen = DateTime.UtcNow;
         public DateTime LastAction = DateTime.MinValue;
+        public string UserId = "";
+        public string Username = "";
+        public bool IsAdmin;
     }
     internal sealed class PairAttempts
     {
@@ -39,11 +43,12 @@ namespace StreamCell
     }
     internal static class Program
     {
-        internal const string Version = "0.2.0";
+        internal const string Version = "0.3.0";
         private static int port = 8765;
         private static string adminToken = Codec.RandomToken(32);
         private static string pairCode = Codec.RandomToken(4);
         private static ConfigStore store;
+        private static AccountStore accounts;
         private static ObsBridge obs;
         private static readonly object sessionsGate = new object();
         private static readonly object actionGate = new object();
@@ -53,23 +58,24 @@ namespace StreamCell
         private static readonly HashSet<string> hosts = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private static List<string> addresses = new List<string>();
         private static volatile bool running = true;
+        [STAThread]
         private static int Main(string[] args)
         {
             string dataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "StreamCell");
             bool noBrowser = false;
+            bool explicitDataDirectory = false;
             try
             {
                 for(int i = 0; i < args.Length; i++)
                 {
                     if(args[i] == "--no-browser") noBrowser = true;
                     else if(args[i] == "--port" && i + 1 < args.Length) port = Int32.Parse(args[++i]);
-                    else if(args[i] == "--data-dir" && i + 1 < args.Length) dataDir = Path.GetFullPath(args[++i]);
+                    else if(args[i] == "--data-dir" && i + 1 < args.Length) { dataDir = Path.GetFullPath(args[++i]); explicitDataDirectory = true; }
                     else throw new ArgumentException("Argumento desconhecido.");
                 }
                 if(port < 1024 || port > 65535) throw new ArgumentException("Porta inválida.");
-                Console.OutputEncoding = Encoding.UTF8;
-                Console.Title = "StreamCell " + Version;
                 store = new ConfigStore(dataDir);
+                accounts = new AccountStore(dataDir);
                 obs = new ObsBridge();
                 var config = store.Snapshot(); obs.Configure(config.obs.port, ConfigStore.Password(config));
                 RefreshAddresses();
@@ -77,25 +83,41 @@ namespace StreamCell
                 listener.Start(32);
                 Console.CancelKeyPress += delegate(object sender, ConsoleCancelEventArgs e) { e.Cancel = true; running = false; listener.Stop(); };
                 string adminUrl = "http://127.0.0.1:" + port + "/admin#" + adminToken;
-                Console.WriteLine("StreamCell " + Version + " — configure no PC e use pelo celular.");
-                Console.WriteLine("Editor do PC: " + adminUrl);
-                Console.WriteLine("Código de pareamento: " + pairCode);
-                foreach(var address in addresses) Console.WriteLine("No celular, abra: " + address);
-                if(store.LoadWarning != null) Console.WriteLine(store.LoadWarning);
-                Console.WriteLine("Mantenha esta janela aberta. Ctrl+C encerra o StreamCell.");
-                if(!noBrowser) { try { Process.Start(new ProcessStartInfo(adminUrl) { UseShellExecute = true }); } catch { Console.WriteLine("Abra o endereço do editor no navegador deste PC."); } }
-                while(running)
+                if(noBrowser)
                 {
-                    TcpClient client;
-                    try { client = listener.AcceptTcpClient(); } catch(SocketException) { if(!running) break; throw; }
-                    if(!clients.WaitOne(0)) { client.Close(); continue; }
-                    ThreadPool.QueueUserWorkItem(delegate { try { Handle(client); } finally { client.Close(); clients.Release(); } });
+                    if(explicitDataDirectory) File.WriteAllText(Path.Combine(dataDir,"test-info.json"),Codec.Encode(new {adminToken=adminToken,pairCode=pairCode}),new UTF8Encoding(false));
+                    Console.WriteLine("StreamCell test server ready.");
+                    Console.WriteLine("Editor token: " + adminToken);
+                    Console.WriteLine("Código de pareamento: " + pairCode);
+                    while(running)
+                    {
+                        TcpClient client;
+                        try { client = listener.AcceptTcpClient(); } catch(SocketException) { if(!running) break; throw; }
+                        if(!clients.WaitOne(0)) { client.Close(); continue; }
+                        ThreadPool.QueueUserWorkItem(delegate { try { Handle(client); } finally { client.Close(); clients.Release(); } });
+                    }
                 }
-                obs.Dispose();
+                else
+                {
+                    Thread acceptThread = new Thread(delegate() { AcceptLoop(listener); });
+                    acceptThread.IsBackground = true; acceptThread.Name = "StreamCell Local Network"; acceptThread.Start();
+                    try { DesktopHost.RegisterResolver(); DesktopHost.Run(adminUrl, dataDir); }
+                    finally { running = false; listener.Stop(); acceptThread.Join(2000); obs.Dispose(); }
+                }
                 return 0;
             }
-            catch(SocketException) { Console.Error.WriteLine("A porta está ocupada. Feche outra instância do StreamCell ou use --port 8766."); return 1; }
-            catch(Exception ex) { Console.Error.WriteLine("Não foi possível iniciar o StreamCell: " + ex.Message); return 1; }
+            catch(SocketException ex) { if(noBrowser && explicitDataDirectory) File.WriteAllText(Path.Combine(dataDir,"startup-error.txt"),ex.ToString()); else MessageBox.Show("A porta está ocupada. Feche outra instância do StreamCell ou use --port 8766.","StreamCell",MessageBoxButtons.OK,MessageBoxIcon.Warning); return 1; }
+            catch(Exception ex) { if(noBrowser && explicitDataDirectory) File.WriteAllText(Path.Combine(dataDir,"startup-error.txt"),ex.ToString()); else MessageBox.Show("Não foi possível iniciar o StreamCell: " + ex.Message,"StreamCell",MessageBoxButtons.OK,MessageBoxIcon.Error); return 1; }
+        }
+        private static void AcceptLoop(TcpListener listener)
+        {
+            while(running)
+            {
+                TcpClient client;
+                try { client = listener.AcceptTcpClient(); } catch(SocketException) { if(!running) break; continue; }
+                if(!clients.WaitOne(0)) { client.Close(); continue; }
+                ThreadPool.QueueUserWorkItem(delegate { try { Handle(client); } finally { client.Close(); clients.Release(); } });
+            }
         }
         private static void RefreshAddresses()
         {
@@ -164,7 +186,7 @@ namespace StreamCell
             if(req.Headers.ContainsKey("Transfer-Encoding")) throw new ApiError(400,"Formato de transferência não suportado.");
             int length=0;
             if(req.Headers.ContainsKey("Content-Length") && (!Int32.TryParse(req.Header("Content-Length"),out length) || length<0)) throw new ApiError(400,"Tamanho inválido.");
-            if(length>262144) throw new ApiError(413,"Configuração muito grande.");
+            if(length>33554432) throw new ApiError(413,"Configuração muito grande.");
             if(req.Method=="POST" && !req.Header("Content-Type").StartsWith("application/json",StringComparison.OrdinalIgnoreCase)) throw new ApiError(415,"Use JSON.");
             var body = new byte[length]; int offset=0;
             while(offset<length) {int n=stream.Read(body,offset,length-offset); if(n==0) throw new ApiError(400,"Corpo incompleto."); offset+=n;}
@@ -188,7 +210,7 @@ namespace StreamCell
             lock(sessionsGate)
             {
                 PhoneSession session;
-                if(!sessions.TryGetValue(req.Header("X-StreamCell-Token"),out session) || session.LastSeen<DateTime.UtcNow.AddDays(-30)) throw new ApiError(401,"Pareie este celular novamente.");
+                if(!sessions.TryGetValue(req.Header("X-StreamCell-Token"),out session) || session.LastSeen<DateTime.UtcNow.AddDays(-30) || !accounts.Exists(session.UserId)) throw new ApiError(401,"Pareie este celular novamente.");
                 session.LastSeen=DateTime.UtcNow; return session;
             }
         }
@@ -206,6 +228,18 @@ namespace StreamCell
             if(req.Path.StartsWith("/api/admin/",StringComparison.Ordinal))
             {
                 RequireAdmin(req);
+                if(req.Method=="GET" && req.Path=="/api/admin/users") {SendJson(stream,new {users=accounts.List()});return;}
+                if(req.Method=="POST" && req.Path=="/api/admin/users/create")
+                {
+                    var body=Body(req); object created; bool admin=accounts.Create(Text(body,"username"),Text(body,"password"),out created);
+                    SendJson(stream,new {user=created,firstAdmin=admin});return;
+                }
+                if(req.Method=="POST" && req.Path=="/api/admin/users/remove")
+                {
+                    string id=Text(Body(req),"id");accounts.Remove(id);
+                    lock(sessionsGate) foreach(var expired in sessions.Where(x=>x.Value.UserId==id).Select(x=>x.Key).ToList()) sessions.Remove(expired);
+                    SendJson(stream,new {users=accounts.List()});return;
+                }
                 if(req.Method=="GET" && req.Path=="/api/admin/config") { SendJson(stream,store.AdminView());return; }
                 if(req.Method=="POST" && req.Path=="/api/admin/config")
                 {
@@ -228,7 +262,7 @@ namespace StreamCell
             if(req.Method!="GET") throw new ApiError(405,"Método não permitido.");
             string asset=req.Path=="/" ? "index.html" : req.Path=="/admin" || req.Path=="/admin/" ? "admin.html" : req.Path.TrimStart('/');
             if(asset.StartsWith("admin",StringComparison.Ordinal) && !IPAddress.IsLoopback(req.Remote)) throw new ApiError(403,"A configuração é feita somente no PC.");
-            string[] assets={"index.html","admin.html","app.js","admin.js","shared.js","styles.css","manifest.webmanifest","icon.svg"};
+            string[] assets={"index.html","admin.html","app.js","admin.js","shared.js","styles.css","manifest.webmanifest","icon.svg","qrcode.js"};
             if(!assets.Contains(asset)) throw new ApiError(404,"Página não encontrada.");
             using(var resource=Assembly.GetExecutingAssembly().GetManifestResourceStream("StreamCell.Assets."+asset))
             {
@@ -238,28 +272,36 @@ namespace StreamCell
         }
         private static object AdminInfo()
         {
-            lock(sessionsGate) return new { version=Version,pairCode,addresses,phoneCount=sessions.Values.Count(s=>s.LastSeen>DateTime.UtcNow.AddMinutes(-2)),warning=store.LoadWarning };
+            lock(sessionsGate) return new { version=Version,pairCode,addresses,pairLinks=addresses.Select(a=>new { address=a,url="streamcell://pair?server="+Uri.EscapeDataString(a)+"&code="+pairCode }).ToArray(),phoneCount=sessions.Values.Count(s=>s.LastSeen>DateTime.UtcNow.AddMinutes(-2)),warning=store.LoadWarning };
         }
         private static void Pair(NetworkStream stream,Request req)
         {
-            string code=Text(Body(req),"code").Replace("-","").Replace(" ","").ToUpperInvariant();
+            var body=Body(req);
+            if(body.Keys.Any(k=>k!="code" && k!="username" && k!="password")) throw new ApiError(400,"Campos de conexão inválidos.");
+            string code=Text(body,"code").Replace("-","").Replace(" ","").ToUpperInvariant();
             lock(sessionsGate)
             {
                 string key=req.Remote.ToString();PairAttempts attempt;
                 if(!attempts.TryGetValue(key,out attempt) || attempt.Start<DateTime.UtcNow.AddMinutes(-1)) {attempt=new PairAttempts();attempts[key]=attempt;}
                 if(++attempt.Count>10) throw new ApiError(429,"Muitas tentativas. Aguarde um minuto.");
                 if(!Codec.Equal(code,pairCode)) throw new ApiError(401,"Código incorreto. Confira o editor no PC.");
+            }
+            var user=accounts.Authenticate(Text(body,"username"),Text(body,"password"));
+            lock(sessionsGate)
+            {
+                if(!Codec.Equal(code,pairCode)) throw new ApiError(401,"O código mudou. Leia o QR novamente.");
                 foreach(var expired in sessions.Where(x=>x.Value.LastSeen<DateTime.UtcNow.AddDays(-30)).Select(x=>x.Key).ToList()) sessions.Remove(expired);
                 if(sessions.Count>=32) throw new ApiError(409,"Limite de dispositivos. Revogue os acessos pelo PC.");
-                string token=Codec.RandomToken(32);sessions.Add(token,new PhoneSession());
-                SendJson(stream,new { token });
+                string token=Codec.RandomToken(32);
+                sessions.Add(token,new PhoneSession { UserId=user.id, Username=user.username, IsAdmin=user.role=="admin" });
+                SendJson(stream,new { token,username=user.username });
             }
         }
         private static object MobileDeck()
         {
             var c=store.Snapshot();var status=obs.GetSnapshot();
-            return new {c.title,c.columns,c.revision,pages=c.pages.Select(p=>new{p.id,p.name,buttons=p.buttons.Select(b=>new {
-                b.id,b.slot,b.label,b.icon,b.color,b.type,
+            return new {c.title,c.columns,c.revision,pages=c.pages.Select(p=>new{p.id,p.name,p.columns,p.rows,buttons=p.buttons.Select(b=>new {
+                b.id,b.slot,b.label,b.icon,b.color,b.image,b.type,
                 requiresConfirmation=b.confirm || b.type=="obs_stream",
                 active=IsActive(b,status),available=!b.type.StartsWith("obs_",StringComparison.Ordinal) || status.connected
             }).ToArray()}).ToArray(), status=new{obsConnected=status.connected}};

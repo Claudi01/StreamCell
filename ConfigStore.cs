@@ -22,11 +22,14 @@ namespace StreamCell
         public int soundIndex = 1;
         public string keys = "";
         public bool confirm;
+        public string image = "";
     }
     public sealed class DeckPage
     {
         public string id = "main";
         public string name = "Principal";
+        public int columns = 5;
+        public int rows = 3;
         public List<DeckButton> buttons = new List<DeckButton>();
     }
     public sealed class ObsSettings
@@ -47,7 +50,7 @@ namespace StreamCell
     }
     internal static class Codec
     {
-        public static JavaScriptSerializer Json() { return new JavaScriptSerializer { MaxJsonLength = 262144, RecursionLimit = 30 }; }
+        public static JavaScriptSerializer Json() { return new JavaScriptSerializer { MaxJsonLength = 33554432, RecursionLimit = 30 }; }
         public static string Encode(object value) { return Json().Serialize(value); }
         public static string RandomToken(int bytes)
         {
@@ -131,10 +134,12 @@ namespace StreamCell
             c.soundpadPath = Clean(c.soundpadPath, 1024, "Soundpad");
             if (c.obs.port < 1 || c.obs.port > 65535 || (c.obs.password != null && c.obs.password.Length > 512)) throw new ArgumentException("Configuração OBS inválida.");
             HashSet<string> ids = new HashSet<string>(StringComparer.Ordinal);
+            int imageCount = 0;
             string[] types = { "app", "url", "soundpad", "soundpad_stop", "hotkey", "media", "obs_scene", "obs_mute", "obs_stream", "obs_record" };
             foreach (var p in c.pages)
             {
-                if (p == null || p.buttons == null || p.buttons.Count > 15) throw new ArgumentException("Cada página aceita até 15 botões.");
+                if (p == null || p.buttons == null || p.buttons.Count > 48) throw new ArgumentException("Cada página aceita até 48 botões.");
+                if (p.columns < 2 || p.columns > 8 || p.rows < 2 || p.rows > 6 || p.columns * p.rows > 48) throw new ArgumentException("Escolha uma grade de 2 a 8 colunas e 2 a 6 linhas.");
                 Identifier(p.id); if (!ids.Add(p.id)) throw new ArgumentException("Identificador repetido.");
                 p.name = Clean(p.name, 32, "página");
                 if (p.name.Length == 0) throw new ArgumentException("Dê um nome à página.");
@@ -143,9 +148,11 @@ namespace StreamCell
                 {
                     if (b == null) throw new ArgumentException("Botão inválido.");
                     Identifier(b.id); if (!ids.Add(b.id)) throw new ArgumentException("Identificador repetido.");
-                    if (b.slot < 0 || b.slot > 14 || !slots.Add(b.slot)) throw new ArgumentException("Posição de botão inválida ou repetida.");
+                    if (b.slot < 0 || b.slot >= p.columns * p.rows || !slots.Add(b.slot)) throw new ArgumentException("Posição de botão inválida ou repetida.");
                     b.label = Clean(b.label, 48, "nome do botão"); b.icon = Clean(b.icon, 40, "ícone");
                     b.target = Clean(b.target, 2048, "destino"); b.arguments = Clean(b.arguments, 2048, "argumentos"); b.keys = Clean(b.keys, 120, "atalho");
+                    b.image = Clean(b.image, 220000, "imagem da tecla");
+                    if (b.image.Length > 0) { imageCount++; if (!Regex.IsMatch(b.image, @"^data:image/(png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$")) throw new ArgumentException("Use uma imagem PNG, JPG ou WebP válida."); }
                     if (b.label.Length == 0 || !types.Contains(b.type) || b.color == null || !Regex.IsMatch(b.color, "^#[0-9a-fA-F]{6}$")) throw new ArgumentException("Revise nome, tipo e cor do botão.");
                     if (b.type == "soundpad" && (b.soundIndex < 1 || b.soundIndex > 100000)) throw new ArgumentException("O índice do som deve ser maior que zero.");
                     if ((b.type == "app" || b.type == "url" || b.type == "obs_scene" || b.type == "obs_mute") && b.target.Length == 0) throw new ArgumentException("Escolha o destino do botão.");
@@ -155,6 +162,7 @@ namespace StreamCell
                     if (b.type == "media" && !new[] { "play_pause", "next", "previous", "volume_up", "volume_down", "mute" }.Contains(b.target)) throw new ArgumentException("Comando de mídia inválido.");
                 }
             }
+            if (imageCount > 48) throw new ArgumentException("Use imagens em até 48 teclas por deck para manter as atualizações rápidas.");
             return c;
         }
     }

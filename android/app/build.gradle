@@ -1,0 +1,26 @@
+plugins { id "com.android.application" }
+
+android {
+    namespace "app.streamcell"
+    compileSdk 35
+    defaultConfig {
+        applicationId "app.streamcell"
+        minSdk 23
+        targetSdk 28
+        versionCode 3
+        versionName "0.3.0"
+    }
+    signingConfigs {
+        beta {
+            storeFile file("../streamcell-beta.keystore")
+            storePassword "streamcell-beta-public"
+            keyAlias "streamcell"
+            keyPassword "streamcell-beta-public"
+        }
+    }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_1_8; targetCompatibility JavaVersion.VERSION_1_8 }
+    buildTypes {
+        debug { signingConfig signingConfigs.beta; debuggable false }
+        release { signingConfig signingConfigs.beta; minifyEnabled false }
+    }
+}

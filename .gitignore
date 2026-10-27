@@ -25,3 +25,18 @@ obj/
 /DeckLocal.csproj
 /DeckLocal.manifest
 /decklocal.example.json
+
+users.json
+users.json.*
+StreamCell.Update.exe
+*.apk
+*.aab
+node_modules/
+
+# Android build outputs
+/android/.gradle/
+/android/local.properties
+/android/app/build/
+
+# Ship the WebView2 binaries needed by the self-contained desktop build
+!vendor/webview2/*.dll

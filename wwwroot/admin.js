@@ -54,7 +54,7 @@
     $("adminError").hidden = false;
     $("adminErrorText").textContent = message;
     $("saveStatus").textContent = "Editor desconectado";
-    ["saveConfig","connectPhone","openSettings"].forEach(function (id) { $(id).disabled = true; });
+    ["saveConfig","connectPhone","openSettings","checkUpdates"].forEach(function (id) { $(id).disabled = true; });
   }
   function currentPage() { return config && config.pages.find(function (page) { return page.id === pageId; }); }
   function currentButton() { var page = currentPage(); return page && page.buttons.find(function (button) { return button.slot === selectedSlot; }); }
@@ -76,7 +76,7 @@
     if (!config.obs.port) config.obs.port = 4455;
     if (!Array.isArray(config.pages)) config.pages = [];
     if (!config.pages.length) config.pages.push({id:U.id("page"),name:"Principal",buttons:[]});
-    config.pages.forEach(function (page) { if (!Array.isArray(page.buttons)) page.buttons = []; });
+    config.pages.forEach(function (page) { if (!Array.isArray(page.buttons)) page.buttons = []; if (!page.columns) page.columns = 5; if (!page.rows) page.rows = 3; });
     if (!currentPage()) pageId = config.pages[0].id;
     config.columns = 5;
   }
@@ -106,10 +106,12 @@
     $("addPage").disabled = config.pages.length >= 20;
   }
   function renderGrid() {
-    var page = currentPage(), grid = $("editorGrid");
+    var page = currentPage(), grid = $("editorGrid"), capacity = page.columns * page.rows;
     grid.replaceChildren();
-    $("keyCount").textContent = page.buttons.length + " / 15 teclas";
-    for (var slot = 0; slot < 15; slot++) {
+    grid.style.gridTemplateColumns = "repeat(" + page.columns + ", minmax(0,1fr))";
+    grid.style.gridTemplateRows = "repeat(" + page.rows + ", minmax(0,1fr))";
+    $("keyCount").textContent = page.buttons.length + " / " + capacity + " teclas";
+    for (var slot = 0; slot < capacity; slot++) {
       var button = page.buttons.find(function (item) { return item.slot === slot; });
       var key = U.key(button,{slot:slot,edit:true});
       key.classList.toggle("is-selected", slot === selectedSlot);
@@ -119,35 +121,19 @@
         el.addEventListener("click",function () { selectedSlot = position; renderGrid(); renderInspector(); });
         el.addEventListener("dragstart",function (event) {
           if (!item) { event.preventDefault(); return; }
-          dragSlot = position;
-          event.dataTransfer.effectAllowed = "move";
-          event.dataTransfer.setData("text/plain",String(position));
-          el.classList.add("dragging");
+          dragSlot = position; event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain",String(position)); el.classList.add("dragging");
         });
-        el.addEventListener("dragend",function () {
-          dragSlot = null;
-          grid.querySelectorAll(".dragging,.drag-over").forEach(function (node) { node.classList.remove("dragging","drag-over"); });
-        });
-        el.addEventListener("dragover",function (event) {
-          if (dragSlot === null || dragSlot === position) return;
-          event.preventDefault();
-          event.dataTransfer.dropEffect = "move";
-          el.classList.add("drag-over");
-        });
+        el.addEventListener("dragend",function () { dragSlot = null; grid.querySelectorAll(".dragging,.drag-over").forEach(function (node) { node.classList.remove("dragging","drag-over"); }); });
+        el.addEventListener("dragover",function (event) { if (dragSlot === null || dragSlot === position) return; event.preventDefault(); event.dataTransfer.dropEffect = "move"; el.classList.add("drag-over"); });
         el.addEventListener("dragleave",function () { el.classList.remove("drag-over"); });
-        el.addEventListener("drop",function (event) {
-          event.preventDefault();
-          el.classList.remove("drag-over");
-          if (dragSlot !== null && dragSlot !== position) moveButton(dragSlot,position);
-          dragSlot = null;
-        });
+        el.addEventListener("drop",function (event) { event.preventDefault(); el.classList.remove("drag-over"); if (dragSlot !== null && dragSlot !== position) moveButton(dragSlot,position); dragSlot = null; });
       })(slot,button,key);
       grid.append(key);
     }
   }
   function moveButton(from,to) {
     var page = currentPage(), source = page.buttons.find(function (button) { return button.slot === from; });
-    if (!source || to < 0 || to > 14) return;
+    if (!source || to < 0 || to >= page.columns * page.rows) return;
     var destination = page.buttons.find(function (button) { return button.slot === to; });
     source.slot = to;
     if (destination) destination.slot = from;
@@ -185,7 +171,7 @@
     });
   }
   function renderInspector() {
-    var button = currentButton();
+    var button = currentButton(), page = currentPage(), capacity = page.columns * page.rows;
     $("selectedSlot").textContent = String(selectedSlot + 1).padStart(2,"0");
     $("inspectorEmpty").hidden = !!button;
     $("buttonForm").hidden = !button;
@@ -202,14 +188,18 @@
     $("buttonConfirm").disabled = button.type === "obs_stream";
     $("buttonConfirm").closest("label").title = button.type === "obs_stream" ? "Iniciar ou parar a live sempre pede confirmação." : "";
     $("buttonSlot").replaceChildren();
-    for (var i = 0; i < 15; i++) {
+    for (var i = 0; i < capacity; i++) {
       var option = document.createElement("option");
       option.value = i;
-      var other = currentPage().buttons.find(function (item) { return item.slot === i; });
+      var other = page.buttons.find(function (item) { return item.slot === i; });
       option.textContent = "Tecla " + String(i + 1).padStart(2,"0") + (other && i !== selectedSlot ? " · trocar com " + other.label : "");
       $("buttonSlot").append(option);
     }
     $("buttonSlot").value = selectedSlot;
+    var preview = $("keyImagePreview");
+    preview.hidden = !button.image;
+    preview.src = button.image || "";
+    $("removeKeyImage").hidden = !button.image;
     renderPickers();
     renderActionFields();
   }
@@ -246,8 +236,24 @@
       $("obsActionHelp").textContent = help[button.type] + (!obs.connected && obs.error ? " " + obs.error : "");
     }
   }
-  function renderAll() { renderPages(); renderGrid(); renderInspector(); }
-
+  function syncGridControls() {
+    var page=currentPage();
+    if(page){$("pageColumns").value=String(page.columns);$("pageRows").value=String(page.rows);}
+  }
+  function initGridControls() {
+    for(var c=2;c<=8;c++){var co=document.createElement("option");co.value=c;co.textContent=c;$("pageColumns").append(co);}
+    for(var r=2;r<=6;r++){var ro=document.createElement("option");ro.value=r;ro.textContent=r;$("pageRows").append(ro);}
+    function change(){
+      var page=currentPage(),columns=Number($("pageColumns").value),rows=Number($("pageRows").value);
+      if(columns*rows>48){U.toast("A grade pode ter até 48 teclas.",true);syncGridControls();return;}
+      page.columns=columns;page.rows=rows;
+      page.buttons.sort(function(a,b){return a.slot-b.slot;}).forEach(function(button,index){button.slot=index;});
+      selectedSlot=Math.min(selectedSlot,columns*rows-1);markDirty();renderAll();
+    }
+    $("pageColumns").addEventListener("change",change);
+    $("pageRows").addEventListener("change",change);
+  }
+  function renderAll() { renderPages(); syncGridControls(); renderGrid(); renderInspector(); }
   function newButton(type) {
     var preset = defaults[type];
     return {id:U.id("key"),slot:selectedSlot,label:preset.label,icon:preset.icon,color:preset.color,type:type,target:type === "media" ? "play_pause" : "",arguments:"",soundIndex:1,keys:"",confirm:type === "obs_stream"};
@@ -289,6 +295,23 @@
   bindField("buttonMedia","target");
   bindField("buttonObsTarget","target");
   bindField("buttonConfirm","confirm",function (el) { return el.checked; });
+  $("chooseKeyImage").addEventListener("click",function () { $("keyImageFile").click(); });
+  $("keyImageFile").addEventListener("change",function () {
+    var file=this.files && this.files[0], button=currentButton();
+    if(!file||!button) return;
+    if(file.type!=="image/png"&&file.type!=="image/jpeg"&&file.type!=="image/webp"){U.toast("Escolha uma imagem PNG, JPG ou WebP.",true);this.value="";return;}
+    var reader=new FileReader();
+    reader.onload=function(){var image=new Image();image.onload=function(){
+      var scale=Math.min(1,384/Math.max(image.width,image.height)),canvas=document.createElement("canvas");
+      canvas.width=Math.max(1,Math.round(image.width*scale));canvas.height=Math.max(1,Math.round(image.height*scale));
+      canvas.getContext("2d").drawImage(image,0,0,canvas.width,canvas.height);
+      var url=canvas.toDataURL("image/webp",0.78);if(!url.startsWith("data:image/webp"))url=canvas.toDataURL("image/jpeg",0.78);
+      if(url.length>220000){U.toast("A imagem ficou grande demais. Escolha outra foto.",true);return;}
+      button.image=url;markDirty();renderGrid();renderInspector();
+    };image.src=reader.result;};
+    reader.readAsDataURL(file);this.value="";
+  });
+  $("removeKeyImage").addEventListener("click",function(){var button=currentButton();if(!button)return;button.image="";markDirty();renderGrid();renderInspector();});
   $("buttonSlot").addEventListener("change",function () { moveButton(selectedSlot,Number(this.value)); });
   $("deleteButton").addEventListener("click",function () {
     var button = currentButton();
@@ -333,7 +356,7 @@
   $("addPage").addEventListener("click",function () {
     if (config.pages.length >= 20) { U.toast("Seu deck aceita até 20 páginas.",true); return; }
     askText("Nova página","Nova página",function (name) {
-      var page = {id:U.id("page"),name:name,buttons:[]};
+      var page = {id:U.id("page"),name:name,columns:5,rows:3,buttons:[]};
       config.pages.push(page); pageId = page.id; selectedSlot = 0;
       markDirty(); renderAll();
     });
@@ -350,6 +373,24 @@
     });
   });
 
+  function renderUsers(users) {
+    var list=$("userList");list.replaceChildren();
+    if(!users.length){var empty=document.createElement("p");empty.className="field-help";empty.textContent="Nenhuma conta ainda. Crie a primeira para liberar o acesso ao celular.";list.append(empty);return;}
+    users.forEach(function(user){
+      var row=document.createElement("div");row.className="user-entry";
+      var name=document.createElement("span");name.textContent=user.username+" · "+(user.role==="admin"?"Administrador":"Usuário");
+      var remove=document.createElement("button");remove.type="button";remove.className="text-button danger-text";remove.textContent="Remover";
+      remove.addEventListener("click",async function(){if(!window.confirm("Remover "+user.username+" e desconectar seus celulares?"))return;try{var result=await api("/api/admin/users/remove",{id:user.id});renderUsers(result.users||[]);U.toast("Usuário removido.");}catch(error){U.toast(error.message,true);}});
+      row.append(name,remove);list.append(row);
+    });
+  }
+  async function loadUsers(){var result=await api("/api/admin/users");renderUsers(result.users||[]);}
+  $("userCreateForm").addEventListener("submit",async function(event){
+    event.preventDefault();var username=$("newUsername").value.trim(),password=$("newPassword").value;
+    if(password.length<10){U.toast("A senha precisa ter pelo menos 10 caracteres.",true);return;}
+    try{var result=await api("/api/admin/users/create",{username:username,password:password});$("newUsername").value="";$("newPassword").value="";renderUsers((await api("/api/admin/users")).users||[]);U.toast(result.firstAdmin?"Administrador criado. Agora conecte o celular com esta conta.":"Usuário criado.");}
+    catch(error){U.toast(error.message,true);}
+  });
   function openSettings() {
     if (!config) return;
     $("configTitle").value = config.title || "Meu StreamCell";
@@ -358,9 +399,11 @@
     $("obsClearPassword").checked = !!config.obs.clearPassword;
     $("obsPasswordHelp").textContent = config.obs.passwordSet ? "Já existe uma senha salva. Deixe o campo vazio para mantê-la." : "Informe a senha definida no OBS. Se a autenticação estiver desativada, deixe vazio.";
     $("soundpadPath").value = config.soundpadPath || "";
+    loadUsers().catch(function(error){$("userList").textContent=error.message;});
     $("settingsDialog").showModal();
   }
   $("openSettings").addEventListener("click",openSettings);
+  $("checkUpdates").addEventListener("click",async function(){try{window.open("https://github.com/Claudi01/StreamCell/releases/latest","_blank","noopener");U.toast("A página oficial de versões foi aberta.");}catch(error){U.toast(error.message,true);}});
   $("soundpadSettings").addEventListener("click",openSettings);
   $("obsSettings").addEventListener("click",openSettings);
   $("obsPassword").addEventListener("input",function () { if (this.value) $("obsClearPassword").checked = false; });
@@ -454,8 +497,17 @@
       U.toast("Endereço copiado.");
     } catch (_) { U.toast("Selecione o endereço e copie manualmente.",true); }
   }
+  function drawPairQr() {
+    var qr=$("phoneQr");qr.replaceChildren();
+    var link=(info&&info.pairLinks||[]).find(function(item){return item.address===$("pairAddressSelect").value;});
+    if(!link){qr.textContent="Nenhum endereço de rede disponível.";return;}
+    try{var code=qrcode(0,"M");code.addData(link.url);code.make();qr.innerHTML=code.createSvgTag(5,2,"Conectar o StreamCell Android");}
+    catch(_){qr.textContent="QR indisponível";}
+  }
+  $("pairAddressSelect").addEventListener("change",drawPairQr);
   function renderPhoneInfo(data) {
     info = data;
+    var selector=$("pairAddressSelect"); var links=data.pairLinks||[]; var previous=selector.value; selector.replaceChildren(); links.forEach(function(link){var option=document.createElement("option");option.value=link.address;try{option.textContent=new URL(link.address).hostname;}catch(_){option.textContent=link.address;}selector.append(option);}); if(links.some(function(link){return link.address===previous;}))selector.value=previous; drawPairQr();
     if (data.warning && data.warning !== shownLoadWarning) { U.toast(data.warning,true); shownLoadWarning = data.warning; }
     $("phonePairCode").textContent = data.pairCode || "------";
     $("phoneCount").textContent = (data.phoneCount || 0) + ((data.phoneCount || 0) === 1 ? " celular conectado" : " celulares conectados");
@@ -540,17 +592,18 @@
     event.preventDefault(); event.returnValue = "";
   });
   async function init() {
-    ["saveConfig","connectPhone","openSettings"].forEach(function (id) { $(id).disabled = true; });
+    ["saveConfig","connectPhone","openSettings","checkUpdates"].forEach(function (id) { $(id).disabled = true; });
     if (!token) { accessError("Abra no navegador o endereço “Editor do PC” exibido na janela do StreamCell. Ele libera esta página para configurar seu deck."); return; }
     try {
       adoptConfig(await api("/api/admin/config"));
       $("editorWorkspace").hidden = false;
       $("adminError").hidden = true;
-      $("connectPhone").disabled = false; $("openSettings").disabled = false;
+      $("connectPhone").disabled = false; $("openSettings").disabled = false; $("checkUpdates").disabled = false;
       markSaved(); renderAll();
       refreshObs(true);
       loadInfo().catch(function () {});
     } catch (error) { accessError(error.message); }
   }
+  initGridControls();
   init();
 })();
